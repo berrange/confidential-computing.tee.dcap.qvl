@@ -48,7 +48,7 @@ namespace intel { namespace sgx { namespace dcap { namespace parser {
 std::string obj2Str(const ASN1_OBJECT* obj);
 std::vector<uint8_t> bn2Vec(const BIGNUM* bn);
 std::string x509NameToString(const X509_NAME* name);
-std::string getNameEntry(X509_NAME* name, int nid);
+std::string getNameEntry(const X509_NAME* name, int nid);
 std::tuple<time_t, time_t> asn1TimePeriodToCTime(const ASN1_TIME* validityBegin, const ASN1_TIME* validityEnd);
 std::string getLastError();
 

@@ -60,16 +60,16 @@ void validateOid(const std::string& oidName, const ASN1_TYPE *oidValue, int expe
     switch (oidValue->type)
     {
         case V_ASN1_INTEGER:
-            oidValueLen = oidValue->value.integer->length;
+            oidValueLen = ASN1_STRING_length(oidValue->value.integer);
             break;
         case V_ASN1_OCTET_STRING:
-            oidValueLen = oidValue->value.octet_string->length;
+            oidValueLen = ASN1_STRING_length(oidValue->value.octet_string);
             break;
         case V_ASN1_ENUMERATED:
-            oidValueLen = oidValue->value.enumerated->length;
+            oidValueLen = ASN1_STRING_length(oidValue->value.enumerated);
             break;
         case V_ASN1_SEQUENCE:
-            oidValueLen = oidValue->value.sequence->length;
+            oidValueLen = ASN1_STRING_length(oidValue->value.sequence);
             break;
         default:
         {
@@ -87,9 +87,9 @@ void validateOid(const std::string& oidName, const ASN1_TYPE *oidValue, int expe
 
 std::vector<uint8_t> oidToBytes(const ASN1_TYPE *oidValue)
 {
-    const auto oidValueLen = oidValue->value.octet_string->length;
+  const auto oidValueLen = ASN1_STRING_length(oidValue->value.octet_string);
     auto bytes = std::vector<uint8_t>(static_cast<size_t>(oidValueLen));
-    std::copy_n(oidValue->value.octet_string->data,
+    std::copy_n(ASN1_STRING_get0_data(oidValue->value.octet_string),
                 oidValueLen,
                 bytes.begin());
     return bytes;
@@ -115,8 +115,9 @@ int oidToEnum(const ASN1_TYPE *oidValue)
 
 STACK_OF_ASN1TYPE_uptr oidToStack(const ASN1_TYPE *oidValue)
 {
-    const unsigned char *data = oidValue->value.sequence->data;
-    auto stack = crypto::make_unique(d2i_ASN1_SEQUENCE_ANY(nullptr, &data, oidValue->value.sequence->length));
+    const unsigned char *data = ASN1_STRING_get0_data(oidValue->value.sequence);
+    auto stack = crypto::make_unique(d2i_ASN1_SEQUENCE_ANY(nullptr, &data,
+							   ASN1_STRING_length(oidValue->value.sequence)));
 
     if(!stack)
     {
