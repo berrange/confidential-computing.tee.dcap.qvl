@@ -80,12 +80,12 @@ bool Extension::operator!=(const Extension& other) const
 
 // Private
 
-Extension::Extension(X509_EXTENSION *ext)
+Extension::Extension(const X509_EXTENSION *ext)
 {
     // I do not check for nullptr below cause this func is not part of
     // public API and given a place from where call is performed I'm pretty certain
     // there won't be any here
-    const ASN1_OBJECT *asn1Obj = X509_EXTENSION_get_object(ext);
+    const ASN1_OBJECT *asn1Obj = X509_EXTENSION_get_object(const_cast<X509_EXTENSION *>(ext));
 
     _nid = OBJ_obj2nid(asn1Obj);
 
@@ -96,29 +96,31 @@ Extension::Extension(X509_EXTENSION *ext)
 
         _name = obj2Str(asn1Obj);
 
-        const auto val = X509_EXTENSION_get_data(ext);
+        const auto val = X509_EXTENSION_get_data(const_cast<X509_EXTENSION *>(ext));
 
         if(!val)
         {
             throw FormatException("Invalid Extension");
         }
 
-        _value = std::vector<uint8_t>(static_cast<size_t>(val->length));
-        std::copy_n(val->data, val->length, _value.begin());
+        _value = std::vector<uint8_t>(static_cast<size_t>(ASN1_STRING_length(val)));
+        std::copy_n(ASN1_STRING_get0_data(val),
+		    ASN1_STRING_length(val), _value.begin());
 
         return;
     }
 
     auto bio = crypto::make_unique(BIO_new(BIO_s_mem()));
-    if(!X509V3_EXT_print(bio.get(), ext, 0, 0))
+    if(!X509V3_EXT_print(bio.get(), const_cast<X509_EXTENSION *>(ext), 0, 0))
     {   // revocation extensions may not be printable,
         // at the time of writing this code, there was no revocation
         // extensions planned so this 'if' statement probably won't be
         // hit at all
-        const auto val = X509_EXTENSION_get_data(ext);
+        const auto val = X509_EXTENSION_get_data(const_cast<X509_EXTENSION *>(ext));
 
-        _value = std::vector<uint8_t>(static_cast<size_t>(val->length));
-        std::copy_n(val->data, val->length, _value.begin());
+        _value = std::vector<uint8_t>(static_cast<size_t>(ASN1_STRING_length(val)));
+        std::copy_n(ASN1_STRING_get0_data(val),
+		    ASN1_STRING_length(val), _value.begin());
 
         _name = std::string(OBJ_nid2ln(_nid));
 

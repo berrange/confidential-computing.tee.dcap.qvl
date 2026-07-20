@@ -158,8 +158,9 @@ std::vector<uint8_t> bn2Vec(const BIGNUM* bn)
 
 Signature getSignature(const ASN1_BIT_STRING* psig)
 {
-    std::vector<uint8_t> rawDerSequence(static_cast<size_t>(psig->length));
-    safeMemcpy(rawDerSequence.data(), psig->data, static_cast<size_t>(psig->length));
+    std::vector<uint8_t> rawDerSequence(static_cast<size_t>(ASN1_STRING_length(psig)));
+    safeMemcpy(rawDerSequence.data(), ASN1_STRING_get0_data(psig),
+	       static_cast<size_t>(ASN1_STRING_length(psig)));
 
     const uint8_t *derSeqIt = rawDerSequence.data();
     const auto sig = crypto::make_unique(d2i_ECDSA_SIG(nullptr, &derSeqIt , static_cast<long>(rawDerSequence.size())));
@@ -211,7 +212,7 @@ std::string x509NameToString(const X509_NAME* name)
     return ret;
 }
 
-std::string getNameEntry(X509_NAME* name, int nid)
+std::string getNameEntry(const X509_NAME* name, int nid)
 {
     // sad, defensive code
 
@@ -236,14 +237,14 @@ std::string getNameEntry(X509_NAME* name, int nid)
         return "";
     }
 
-    X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, position);
+    const X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, position);
 
     if(!entry)
     {
         return "";
     }
 
-    ASN1_STRING *asn1 = X509_NAME_ENTRY_get_data(entry);
+    const ASN1_STRING *asn1 = X509_NAME_ENTRY_get_data(entry);
     const int asn1EstimatedStrLen = ASN1_STRING_length(asn1);
     if(asn1EstimatedStrLen <= 0)
     {
@@ -302,12 +303,12 @@ std::string asn1ToString(const ASN1_TIME* time)
     return std::string(buff);
 }
 
-Extension getExtension(X509_EXTENSION* ex)
+Extension getExtension(const X509_EXTENSION* ex)
 {
     // I do not check for nullptr below cause this func is not part of
     // public API and given a place from where call is perfmormed I'm pretty certain
     // there won't be any here
-    const ASN1_OBJECT *asn1Obj = X509_EXTENSION_get_object(ex);
+    const ASN1_OBJECT *asn1Obj = X509_EXTENSION_get_object(const_cast<X509_EXTENSION *>(ex));
 
     const int nid = OBJ_obj2nid(asn1Obj);
 
@@ -318,15 +319,16 @@ Extension getExtension(X509_EXTENSION* ex)
 
         const std::string extName = obj2Str(asn1Obj);
 
-        const auto val = X509_EXTENSION_get_data(ex);
+        const auto val = X509_EXTENSION_get_data(const_cast<X509_EXTENSION *>(ex));
 
         if(!val)
         {
             throw FormatException("Invalid Extension");
         }
 
-        std::vector<uint8_t> data(static_cast<size_t>(val->length));
-        std::copy_n(val->data, val->length, data.begin());
+        std::vector<uint8_t> data(static_cast<size_t>(ASN1_STRING_length(val)));
+        std::copy_n(ASN1_STRING_get0_data(val),
+		    ASN1_STRING_length(val), data.begin());
 
         return Extension {
             nid,
@@ -336,15 +338,16 @@ Extension getExtension(X509_EXTENSION* ex)
     }
 
     auto bio = crypto::make_unique(BIO_new(BIO_s_mem()));
-    if(!X509V3_EXT_print(bio.get(), ex, 0, 0))
+    if(!X509V3_EXT_print(bio.get(), const_cast<X509_EXTENSION *>(ex), 0, 0))
     {   // revocation extensions may not be printable,
         // at the time of writing this code, there was no revocation
         // extensions planned so this 'if' statement probably won't be
         // hit at all
-        const auto val = X509_EXTENSION_get_data(ex);
+        const auto val = X509_EXTENSION_get_data(const_cast<X509_EXTENSION *>(ex));
 
-        std::vector<uint8_t> data(static_cast<size_t>(val->length));
-        std::copy_n(val->data, val->length, data.begin());
+        std::vector<uint8_t> data(static_cast<size_t>(ASN1_STRING_length(val)));
+        std::copy_n(ASN1_STRING_get0_data(val),
+		    ASN1_STRING_length(val), data.begin());
 
         return Extension{
             nid,
@@ -387,13 +390,14 @@ Revoked getRevoked(const STACK_OF(X509_REVOKED)* revokedStack, int index)
         return {};
     }
 
-    if(serialNumber->length <= 0)
+    if(ASN1_STRING_length(serialNumber) <= 0)
     {
         return {};
     }
 
-    std::vector<uint8_t> retSerial(static_cast<size_t>(serialNumber->length));
-    std::copy_n(serialNumber->data, serialNumber->length, retSerial.begin());
+    std::vector<uint8_t> retSerial(static_cast<size_t>(ASN1_STRING_length(serialNumber)));
+    std::copy_n(ASN1_STRING_get0_data(serialNumber),
+		ASN1_STRING_length(serialNumber), retSerial.begin());
 
     // Revoked entry can have its extensions
     // but at the time of writing this code there was no
@@ -511,7 +515,7 @@ long getVersion(const X509_CRL& crl)
 
 Issuer getIssuer(const X509_CRL& crl)
 {
-    X509_NAME *issuer = X509_CRL_get_issuer(&crl);
+    const X509_NAME *issuer = X509_CRL_get_issuer(&crl);
     if(!issuer)
     {
         throw FormatException(getLastError());
@@ -567,7 +571,7 @@ Signature getSignature(const X509_CRL& crl)
         throw FormatException(getLastError());
     }
 
-    if(psig->length == 0)
+    if(ASN1_STRING_length(psig) == 0)
     {
         return {};
     }
