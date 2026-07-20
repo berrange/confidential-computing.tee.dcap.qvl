@@ -113,7 +113,7 @@ std::string x509NameToString(const X509_NAME* name)
     return ret;
 }
 
-std::string getNameEntry(X509_NAME* name, int nid)
+std::string getNameEntry(const X509_NAME* name, int nid)
 {
     // sad, defensive code
 
@@ -141,7 +141,7 @@ std::string getNameEntry(X509_NAME* name, int nid)
         return "";
     }
 
-    X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, position);
+    const X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, position);
 
     if(!entry)
     {
@@ -149,7 +149,7 @@ std::string getNameEntry(X509_NAME* name, int nid)
         return "";
     }
 
-    ASN1_STRING *asn1 = X509_NAME_ENTRY_get_data(entry);
+    const ASN1_STRING *asn1 = X509_NAME_ENTRY_get_data(entry);
     const int asn1EstimatedStrLen = ASN1_STRING_length(asn1);
     if(asn1EstimatedStrLen <= 0)
     {

@@ -95,7 +95,7 @@ bool DistinguishedName::operator!=(const DistinguishedName &other) const {
 
 // Private
 
-DistinguishedName::DistinguishedName(X509_name_st *x509Name):
+DistinguishedName::DistinguishedName(const X509_name_st *x509Name):
                                                       DistinguishedName(x509NameToString(x509Name),
                                                                         getNameEntry(x509Name, NID_commonName),
                                                                         getNameEntry(x509Name, NID_countryName),

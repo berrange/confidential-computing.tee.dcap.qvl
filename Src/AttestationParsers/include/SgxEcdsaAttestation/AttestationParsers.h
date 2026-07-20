@@ -815,7 +815,7 @@ namespace intel { namespace sgx { namespace dcap { namespace parser
             std::string _locationName;
             std::string _stateName;
 
-            explicit DistinguishedName(X509_name_st *x509Name);
+            explicit DistinguishedName(const X509_name_st *x509Name);
 
             friend class Certificate;
         };
@@ -948,7 +948,7 @@ namespace intel { namespace sgx { namespace dcap { namespace parser
             std::string _name;
             std::vector<uint8_t> _value;
 
-            explicit Extension(X509_EXTENSION *ext);
+            explicit Extension(const X509_EXTENSION *ext);
 
             friend class Certificate;
             friend class UnitTests;

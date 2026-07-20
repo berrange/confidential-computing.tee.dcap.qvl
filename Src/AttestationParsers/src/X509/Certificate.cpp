@@ -182,7 +182,7 @@ void Certificate::setSerialNumber(const X509 *x509)
 void Certificate::setSubject(const X509 *x509)
 {
     // this is an internal pointer and must not be freed !
-    X509_NAME *subject = X509_get_subject_name(x509);
+    const X509_NAME *subject = X509_get_subject_name(x509);
 
     if(!subject)
     {
@@ -197,7 +197,7 @@ void Certificate::setSubject(const X509 *x509)
 void Certificate::setIssuer(const X509 *x509)
 {
     // this is an internal pointer and must not be freed !
-    X509_NAME *issuer = X509_get_issuer_name(x509);
+    const X509_NAME *issuer = X509_get_issuer_name(x509);
 
     if(!issuer)
     {
@@ -290,7 +290,7 @@ void Certificate::setSignature(const X509 *x509)
         LOG_AND_THROW(FormatException, err);
     }
 
-    if(psig->length == 0)
+    if(ASN1_STRING_length(psig) == 0)
     {
         LOG_AND_THROW(FormatException, "Signature should not be empty")
     }
@@ -300,16 +300,17 @@ void Certificate::setSignature(const X509 *x509)
 
 void Certificate::setPublicKey(const X509 *x509)
 {
-    ASN1_BIT_STRING* asn1PubKey = X509_get0_pubkey_bitstr(x509);
+    const ASN1_BIT_STRING* asn1PubKey = X509_get0_pubkey_bitstr(x509);
 
     if(asn1PubKey == nullptr)
     {
         LOG_AND_THROW(FormatException, "Certificate should not be NULL");
     }
 
-    size_t len = static_cast<size_t>(asn1PubKey->length);
+    size_t len = static_cast<size_t>(ASN1_STRING_length(asn1PubKey));
+    const uint8_t *data = static_cast<const uint8_t *>(ASN1_STRING_get0_data(asn1PubKey));
 
-    _pubKey = std::vector<uint8_t>(asn1PubKey->data, asn1PubKey->data + len);
+    _pubKey = std::vector<uint8_t>(data, data + len);
 }
 
 void Certificate::setCrlDistributionPoint(const X509 *x509)
